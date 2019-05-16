@@ -544,6 +544,7 @@ local function PresentBackpack()
             '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
     SaveChars(char)
     SaveInvAndBank(char);
+    package.loaded.Backpack = nil
     if totalsLoaded and totals ~= nil then
         if imgui.TreeNodeEx("Total Wealth") then
             local _totals = DefaultTotals()
