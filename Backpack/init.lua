@@ -346,6 +346,7 @@ local function SaveChars(player)
             io.close(file)
         end
     end
+    package.loaded["Backpack.data.chars"] = nil
 end
 
 local function SaveItems(location, items)
@@ -528,13 +529,20 @@ local function SaveInvAndBank(player)
     local charInv = 'addons/Backpack/data/' .. player .. '_inv.lua'
     local inv = lib_items.GetInventory(lib_items.Me)
     SaveItems(charInv, inv)
+    package.loaded['Backpack.data.' .. player .. '_inv'] = nil
     local charBank = 'addons/Backpack/data/' .. player .. '_bank.lua'
     local bank = lib_items.GetBank()
     if isSharedBank(bank) then
         charBank = 'addons/Backpack/data/shared_bank.lua'
     end
     SaveItems(charBank, bank)
+    if isSharedBank(bank) then
+        package.loaded['Backpack.data.shared_bank'] = nil
+    else
+        package.loaded['Backpack.data.' .. player .. '_bank'] = nil
+    end
     SaveTotals(player, inv, bank)
+    package.loaded['Backpack.data.totals'] = nil
 end
 
 local function PresentBackpack()
@@ -544,7 +552,6 @@ local function PresentBackpack()
             '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
     SaveChars(char)
     SaveInvAndBank(char);
-    package.loaded.Backpack = nil
     if totalsLoaded and totals ~= nil then
         if imgui.TreeNodeEx("Total Wealth") then
             local _totals = DefaultTotals()
