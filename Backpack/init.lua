@@ -540,16 +540,19 @@ local function SaveInvAndBank(player)
 end
 
 local function PresentBackpack()
-    if Frame >= 30 then
-        local player = lib_characters.GetSelf()
-        local char = tostring(lib_characters.GetPlayerName(player) ..
-                '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
-                '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
-        SaveChars(char)
-        SaveInvAndBank(char);
-        Frame = 0
+    local player = lib_characters.GetSelf()
+    local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
+    if charLoaded and name ~= nil then
+        if Frame >= 30 then
+            local char = tostring(lib_characters.GetPlayerName(player) ..
+                    '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
+                    '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
+            SaveChars(char)
+            SaveInvAndBank(char);
+            Frame = 0
+        end
+        Frame = Frame + 1
     end
-    Frame = Frame + 1
     local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
     if totalsLoaded and totals ~= nil then
         if imgui.TreeNodeEx("Total Wealth") then
