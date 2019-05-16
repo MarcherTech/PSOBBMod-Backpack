@@ -9,7 +9,6 @@ local lib_characters = require("solylib.characters")
 local cfg = require("Backpack.configuration")
 local optionsLoaded, options = pcall(require, "Backpack.options")
 local charsLoaded, chars = pcall(require, "Backpack.data.chars")
-local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
 local totalsFileName = "addons/Backpack/data/totals.lua"
 local charsFileName = "addons/Backpack/data/chars.lua"
 local optionsFileName = "addons/Backpack/options.lua"
@@ -462,7 +461,7 @@ local function buildTotals(player, items, bank)
 end
 
 local function SaveTotals(player, items, bank)
-
+    local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
     if totalsLoaded and totals ~= nil then
         local file = io.open(totalsFileName, "w")
         if file ~= nil then
@@ -551,6 +550,7 @@ local function PresentBackpack()
         Frame = 0
     end
     Frame = Frame + 1
+    local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
     if totalsLoaded and totals ~= nil then
         if imgui.TreeNodeEx("Total Wealth") then
             local _totals = DefaultTotals()
