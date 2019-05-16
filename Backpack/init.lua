@@ -13,6 +13,7 @@ local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
 local totalsFileName = "addons/Backpack/data/totals.lua"
 local charsFileName = "addons/Backpack/data/chars.lua"
 local optionsFileName = "addons/Backpack/options.lua"
+local Frame = 0
 local ConfigurationWindow
 
 if optionsLoaded then
@@ -523,8 +524,6 @@ local function AddTotals(_totals, table)
     return _totals
 end
 
-
-
 local function SaveInvAndBank(player)
     local charInv = 'addons/Backpack/data/' .. player .. '_inv.lua'
     local inv = lib_items.GetInventory(lib_items.Me)
@@ -546,12 +545,16 @@ local function SaveInvAndBank(player)
 end
 
 local function PresentBackpack()
-    local player = lib_characters.GetSelf()
-    local char = tostring(lib_characters.GetPlayerName(player) ..
-            '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
-            '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
-    SaveChars(char)
-    SaveInvAndBank(char);
+    if Frame >= 30 then
+        local player = lib_characters.GetSelf()
+        local char = tostring(lib_characters.GetPlayerName(player) ..
+                '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
+                '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
+        SaveChars(char)
+        SaveInvAndBank(char);
+        Frame = 0
+    end
+    Frame = Frame + 1
     if totalsLoaded and totals ~= nil then
         if imgui.TreeNodeEx("Total Wealth") then
             local _totals = DefaultTotals()
