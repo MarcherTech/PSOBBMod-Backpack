@@ -55,7 +55,7 @@ local function ConfigurationWindow(configuration)
             _configuration.changed = true
             this.changed = true
         end
-        if imgui.Checkbox("Hide when menus are open", _configuration.HideWhenMenu) then
+        if imgui.Checkbox("Only show when menus are open", _configuration.HideWhenMenu) then
             _configuration.HideWhenMenu = not _configuration.HideWhenMenu
             this.changed = true
         end

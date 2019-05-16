@@ -627,7 +627,7 @@ local function present()
     end
 
     if (options.EnableWindow == true)
-            and (options.HideWhenMenu == false or lib_menu.IsMenuOpen() == false)
+            and (options.HideWhenMenu == false or lib_menu.IsMenuOpen() == true)
             and (options.HideWhenSymbolChat == false or lib_menu.IsSymbolChatOpen() == false)
             and (options.HideWhenMenuUnavailable == false or lib_menu.IsMenuUnavailable() == false) then
         local windowName = "Backpack"
