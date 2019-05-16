@@ -108,11 +108,7 @@ local function ProcessWeapon(item)
             result = result .. string.format(" [%s]", lib_unitxt.GetSRankSpecialName(item.weapon.specialSRank))
         end
     else
-        local nameColor = lib_items_cfg.weaponName
-        local item_cfg = lib_items_list.t[item.hex]
-        if item_cfg ~= nil and item_cfg[1] ~= 0 then
-            nameColor = item_cfg[1]
-        end
+
         result = result .. string.format("%s ", item.name)
 
         if item.weapon.grind > 0 then
