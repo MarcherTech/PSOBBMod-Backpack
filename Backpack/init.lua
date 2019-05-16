@@ -544,7 +544,7 @@ local function PresentBackpack()
     local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
     if charLoaded and name ~= nil then
         if Frame >= 30 then
-            local char = tostring(lib_characters.GetPlayerName(player) ..
+            local char = tostring(name ..
                     '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
                     '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
             SaveChars(char)
