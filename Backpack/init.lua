@@ -8,7 +8,6 @@ local lib_unitxt = require("solylib.unitxt")
 local lib_characters = require("solylib.characters")
 local cfg = require("Backpack.configuration")
 local optionsLoaded, options = pcall(require, "Backpack.options")
-local charsLoaded, chars = pcall(require, "Backpack.data.chars")
 local totalsFileName = "addons/Backpack/data/totals.lua"
 local charsFileName = "addons/Backpack/data/chars.lua"
 local optionsFileName = "addons/Backpack/options.lua"
@@ -313,6 +312,7 @@ local function isAddSlot(item)
 end
 
 local function SaveChars(player)
+    local charsLoaded, chars = pcall(require, "Backpack.data.chars")
     if charsLoaded and chars ~= nil then
         if chars[player] == nil then
             local file = io.open(charsFileName, "w")
@@ -586,6 +586,7 @@ local function PresentBackpack()
             imgui.TreePop()
         end
     end
+    local charsLoaded, chars = pcall(require, "Backpack.data.chars")
     if charsLoaded and chars ~= nil then
         for key, value in pairs(chars) do
             if imgui.TreeNodeEx(string.gsub(key, '~~~', ', ') .. " - Inventory") then
