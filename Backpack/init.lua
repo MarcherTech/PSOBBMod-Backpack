@@ -11,8 +11,8 @@ local optionsLoaded, options = pcall(require, "Backpack.options")
 local totalsFileName = "addons/Backpack/data/totals.lua"
 local charsFileName = "addons/Backpack/data/chars.lua"
 local optionsFileName = "addons/Backpack/options.lua"
-local Frame = 0
-local ConfigurationWindow
+local Frame, ConfigurationWindow, bankIsShared
+local _SideMessage = pso.base_address + 0x006AECC8
 
 if optionsLoaded then
     -- If options loaded, make sure we have all those we need
@@ -50,6 +50,16 @@ else
         NoMove = "",
         TransparentWindow = false,
     }
+end
+
+-- read side message from memory buffer
+local function get_side_text()
+    local ptr = pso.read_u32(_SideMessage)
+    if ptr ~= 0 then
+        local text = pso.read_wstr(ptr + 0x14, 0xFF)
+        return text
+    end
+    return ""
 end
 
 local function SaveOptions(options)
@@ -441,7 +451,7 @@ local function buildTotals(player, items, bank)
         _totals = ParseTotals(_totals, value)
     end
     writeTotals(player, _totals)
-    if isSharedBank(bank) == false then
+    if bankIsShared == false then
         _totals = DefaultTotals()
         _totals.meseta = _totals.meseta + bank.meseta
         for key, value in pairs(bank.items) do
@@ -449,7 +459,7 @@ local function buildTotals(player, items, bank)
         end
         writeTotals(player .. '~Bank', _totals)
     end
-    if isSharedBank(bank) then
+    if bankIsShared then
         _totals = DefaultTotals()
         _totals.meseta = _totals.meseta + bank.meseta
         for key, value in pairs(bank.items) do
@@ -469,7 +479,7 @@ local function SaveTotals(player, items, bank)
             io.write("return\n")
             io.write("{\n")
             for key, value in pairs(totals) do
-                if key ~= player and ((isSharedBank(bank) == false and key ~= player .. '~Bank') or (isSharedBank(bank) and key ~= 'shared')) then
+                if key ~= player and ((bankIsShared == false and key ~= player .. '~Bank') or (bankIsShared and key ~= 'shared')) then
                     io.write(string.format("    [\"%s\"] = {\n", tostring(key)))
                     for k, v in pairs(value) do
                         io.write(string.format("        %s = %s,\n", k, v))
@@ -526,11 +536,11 @@ local function SaveInvAndBank(player)
     package.loaded['Backpack.data.' .. player .. '_inv'] = nil
     local charBank = 'addons/Backpack/data/' .. player .. '_bank.lua'
     local bank = lib_items.GetBank()
-    if isSharedBank(bank) then
+    if bankIsShared then
         charBank = 'addons/Backpack/data/shared_bank.lua'
     end
     SaveItems(charBank, bank)
-    if isSharedBank(bank) then
+    if bankIsShared then
         package.loaded['Backpack.data.shared_bank'] = nil
     else
         package.loaded['Backpack.data.' .. player .. '_bank'] = nil
@@ -542,6 +552,7 @@ end
 local function PresentBackpack()
     local player = lib_characters.GetSelf()
     local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
+    local location = pso.read_u32(0x00AAFC9C + 0x04)
     if charLoaded and name ~= nil then
         if Frame >= 30 then
             local char = tostring(name ..
@@ -549,6 +560,12 @@ local function PresentBackpack()
                     '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
             SaveChars(char)
             SaveInvAndBank(char);
+            Frame = 0
+        end
+        Frame = Frame + 1
+        elseif location == 0 then
+        if Frame >= 150 then
+            bankIsShared = false
             Frame = 0
         end
         Frame = Frame + 1
@@ -625,6 +642,12 @@ local function present()
         ConfigurationWindow.changed = false
         SaveOptions(options)
     end
+    local side = get_side_text()
+    if string.find(side, "Bank: Shared") ~= nil then
+        bankIsShared = true
+    elseif string.find(side, "Bank: Character") ~= nil then
+        bankIsShared = false
+    end
 
     if (options.EnableWindow == true)
             and (options.HideWhenMenu == false or lib_menu.IsMenuOpen() == true)
@@ -670,7 +693,8 @@ end
 
 local function init()
     ConfigurationWindow = cfg.ConfigurationWindow(options)
-
+    Frame = 0
+    bankIsShared = false
     local function mainMenuButtonHandler()
         ConfigurationWindow.open = not ConfigurationWindow.open
     end
