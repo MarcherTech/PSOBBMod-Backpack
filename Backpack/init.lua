@@ -230,6 +230,13 @@ local function ProcessItem(item)
     return itemStr
 end
 
+local function isSRank(item)
+    if item.data[1] == 0 and item.weapon.isSRank then
+        return true
+    end
+    return false
+end
+
 local function isScapeDoll(item)
     if item.hex == 0x030900 then
         return true
@@ -377,6 +384,22 @@ local function SaveItems(location, items)
     end
 end
 
+local function SRankSpecialPdValue(item)
+    local special = lib_unitxt.GetSRankSpecialName(item.weapon.specialSRank)
+    if special == "HP Regeneration" or special == "TP Regeneration" then
+        return 20
+    elseif special == "Blizzard" or special == "Burning" or special == "Tempest" then
+        return 30
+    elseif special == "Spirit" or special == "Berserk" or special == "Chaos" or special == "King's" or special == "Geist" or special == "Gush" then
+        return 40
+    elseif special == "Hell" or special == "Demon's" or special == "Arrest" then
+        return 50
+    elseif special == "Jellen" or special == "Zalure" then
+        return 60
+    end
+    return 0
+end
+
 local function ParseTotals(counts, item)
     if isScapeDoll(item) then
         counts.scapes = counts.scapes + 1
@@ -388,6 +411,9 @@ local function ParseTotals(counts, item)
         counts.ps = counts.ps + item.tool.count
     elseif isAddSlot(item) then
         counts.as = counts.as + 1
+        elseif isSRank(item) then
+        counts.es = counts.es + 1
+        counts.espd = counts.espd + SRankSpecialPdValue(item)
     elseif isHp(item) then
         counts.hp = counts.hp + item.tool.count
     elseif isTp(item) then
@@ -410,11 +436,13 @@ end
 
 local function DefaultTotals()
     return {
-        scapes = 0,
         meseta = 0,
+        scapes = 0,
         pd = 0,
         pc = 0,
         ps = 0,
+        es = 0,
+        espd = 0,
         as = 0,
         hp = 0,
         tp = 0,
@@ -425,13 +453,6 @@ local function DefaultTotals()
         dg = 0,
         tg = 0,
     }
-end
-
-local function isSharedBank(bank)
-    if bank.meseta > 999999 then
-        return true
-    end
-    return false
 end
 
 local function writeTotals(player, counts)
@@ -451,22 +472,20 @@ local function buildTotals(player, items, bank)
         _totals = ParseTotals(_totals, value)
     end
     writeTotals(player, _totals)
-    if bankIsShared == false then
-        _totals = DefaultTotals()
-        _totals.meseta = _totals.meseta + bank.meseta
-        for key, value in pairs(bank.items) do
-            _totals = ParseTotals(_totals, value)
-        end
-        writeTotals(player .. '~Bank', _totals)
-    end
     if bankIsShared then
         _totals = DefaultTotals()
         _totals.meseta = _totals.meseta + bank.meseta
         for key, value in pairs(bank.items) do
             _totals = ParseTotals(_totals, value)
         end
-
         writeTotals('shared', _totals)
+    else
+        _totals = DefaultTotals()
+        _totals.meseta = _totals.meseta + bank.meseta
+        for key, value in pairs(bank.items) do
+            _totals = ParseTotals(_totals, value)
+        end
+        writeTotals(player .. '~Bank', _totals)
     end
 end
 
@@ -510,22 +529,11 @@ local function SaveTotals(player, items, bank)
 end
 
 local function AddTotals(_totals, table)
-
-    _totals.scapes = _totals.scapes + table.scapes
-    _totals.meseta = _totals.meseta + table.meseta
-    _totals.pd = _totals.pd + table.pd
-    _totals.pc = _totals.pc + table.pc
-    _totals.ps = _totals.ps + table.ps
-    _totals.as = _totals.as + table.as
-    _totals.hp = _totals.hp + table.hp
-    _totals.tp = _totals.tp + table.tp
-    _totals.pow = _totals.pow + table.pow
-    _totals.mind = _totals.mind + table.mind
-    _totals.luck = _totals.luck + table.luck
-    _totals.mg = _totals.mg + table.mg
-    _totals.dg = _totals.dg + table.dg
-    _totals.tg = _totals.tg + table.tg
-
+    for key, value in pairs(_totals) do
+        if table[key] ~= nil then
+            _totals[key] = value + table[key]
+        end
+    end
     return _totals
 end
 
@@ -549,6 +557,44 @@ local function SaveInvAndBank(player)
     package.loaded['Backpack.data.totals'] = nil
 end
 
+local TotalsText = {
+    meseta = "Meseta: %i",
+    scapes = "Scape Doll: %i",
+    pd = "Photon Drop: %i",
+    pc = "Photon Crystal: %i",
+    ps = "Photon Sphere: %i",
+    es = "S-Rank Count: %i",
+    espd = "S-Rank Specials: %iPD",
+    as = "AddSlot: %i",
+    hp = "HP Material: %i",
+    tp = "TP Material: %i",
+    pow = "Power Material: %i",
+    mind = "Mind Material: %i",
+    luck = "Luck Material: %i",
+    mg = "Monogrinder: %i",
+    dg = "Digrinder: %i",
+    tg = "Trigrinder: %i",
+}
+
+local TotalsOrdered = {
+    "meseta",
+    "scapes",
+    "pd",
+    "pc",
+    "ps",
+    "es",
+    "espd",
+    "as",
+    "hp",
+    "tp",
+    "pow",
+    "mind",
+    "luck",
+    "mg",
+    "dg",
+    "tg",
+}
+
 local function PresentBackpack()
     local player = lib_characters.GetSelf()
     local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
@@ -563,7 +609,7 @@ local function PresentBackpack()
             Frame = 0
         end
         Frame = Frame + 1
-        elseif location == 0 then
+    elseif location == 0 then
         if Frame >= 150 then
             bankIsShared = false
             Frame = 0
@@ -577,20 +623,11 @@ local function PresentBackpack()
             for key, table in pairs(totals) do
                 _totals = AddTotals(_totals, table)
             end
-            imgui.Text("Meseta: " .. _totals.meseta)
-            imgui.Text("Scape Doll: " .. _totals.scapes)
-            imgui.Text("Photon Drop: " .. _totals.pd)
-            imgui.Text("Photon Crystal: " .. _totals.pc)
-            imgui.Text("Photon Sphere: " .. _totals.ps)
-            imgui.Text("AddSlot: " .. _totals.as)
-            imgui.Text("HP Material: " .. _totals.hp)
-            imgui.Text("TP Material: " .. _totals.tp)
-            imgui.Text("Power Material: " .. _totals.pow)
-            imgui.Text("Mind Material: " .. _totals.mind)
-            imgui.Text("Luck Material: " .. _totals.luck)
-            imgui.Text("Monogrinder: " .. _totals.mg)
-            imgui.Text("Digrinder: " .. _totals.dg)
-            imgui.Text("Trigrinder: " .. _totals.tg)
+            for k, v in ipairs(TotalsOrdered) do
+                if _totals[v] ~= nil then
+                imgui.Text(string.format(TotalsText[v], _totals[v]))
+                end
+            end
             imgui.TreePop()
         end
     end
