@@ -411,7 +411,7 @@ local function ParseTotals(counts, item)
         counts.ps = counts.ps + item.tool.count
     elseif isAddSlot(item) then
         counts.as = counts.as + 1
-        elseif isSRank(item) then
+    elseif isSRank(item) then
         counts.es = counts.es + 1
         counts.espd = counts.espd + SRankSpecialPdValue(item)
     elseif isHp(item) then
@@ -464,29 +464,22 @@ local function writeTotals(player, counts)
 
     io.write("    },\n")
 end
-
-local function buildTotals(player, items, bank)
+local function BuildAndSaveTotals(items, key)
     local _totals = DefaultTotals()
     _totals.meseta = items.meseta
     for key, value in pairs(items.items) do
         _totals = ParseTotals(_totals, value)
     end
-    writeTotals(player, _totals)
+    writeTotals(key, _totals)
+end
+
+local function BuildTotals(player, items, bank)
+    BuildAndSaveTotals(items, player)
+    local bankFile = player .. '~Bank'
     if bankIsShared then
-        _totals = DefaultTotals()
-        _totals.meseta = _totals.meseta + bank.meseta
-        for key, value in pairs(bank.items) do
-            _totals = ParseTotals(_totals, value)
-        end
-        writeTotals('shared', _totals)
-    else
-        _totals = DefaultTotals()
-        _totals.meseta = _totals.meseta + bank.meseta
-        for key, value in pairs(bank.items) do
-            _totals = ParseTotals(_totals, value)
-        end
-        writeTotals(player .. '~Bank', _totals)
+        bankFile = 'shared'
     end
+    BuildAndSaveTotals(bank, bankFile)
 end
 
 local function SaveTotals(player, items, bank)
@@ -507,7 +500,7 @@ local function SaveTotals(player, items, bank)
                 end
             end
 
-            buildTotals(player, items, bank)
+            BuildTotals(player, items, bank)
 
             io.write("}\n")
 
@@ -598,17 +591,22 @@ local TotalsOrdered = {
 local function PresentBackpack()
     local player = lib_characters.GetSelf()
     local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
+
     local location = pso.read_u32(0x00AAFC9C + 0x04)
     if charLoaded and name ~= nil then
-        if Frame >= 30 then
-            local char = tostring(name ..
-                    '~~~' .. lib_unitxt.GetClassName(lib_characters.GetPlayerClass(player)) ..
-                    '~~~' .. lib_unitxt.GetSectionIDName(lib_characters.GetPlayerSectionID(player)));
-            SaveChars(char)
-            SaveInvAndBank(char);
-            Frame = 0
+        local class = lib_characters.GetPlayerClass(player)
+        local classLoaded, className = pcall(lib_unitxt.GetClassName, class)
+        local sectionId = lib_characters.GetPlayerSectionID(player)
+        local sectionIdLoaded, sectionIdName = pcall(lib_unitxt.GetSectionIDName, sectionId)
+        if classLoaded and sectionIdLoaded and className ~= nil and sectionIdName ~= nil then
+            local char = tostring(name .. '~~~' .. className .. '~~~' .. sectionIdName);
+            if Frame >= 30 then
+                SaveChars(char)
+                SaveInvAndBank(char);
+                Frame = 0
+            end
+            Frame = Frame + 1
         end
-        Frame = Frame + 1
     elseif location == 0 then
         if Frame >= 150 then
             bankIsShared = false
@@ -625,7 +623,7 @@ local function PresentBackpack()
             end
             for k, v in ipairs(TotalsOrdered) do
                 if _totals[v] ~= nil then
-                imgui.Text(string.format(TotalsText[v], _totals[v]))
+                    imgui.Text(string.format(TotalsText[v], _totals[v]))
                 end
             end
             imgui.TreePop()
