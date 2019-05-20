@@ -12,7 +12,47 @@ local totalsFileName = "addons/Backpack/data/totals.lua"
 local charsFileName = "addons/Backpack/data/chars.lua"
 local optionsFileName = "addons/Backpack/options.lua"
 local Frame, ConfigurationWindow, bankIsShared
-local _SideMessage = pso.base_address + 0x006AECC8
+local SideMessage = pso.base_address + 0x006AECC8
+local BackpackStatus = true
+local BackpackSelected = 1
+
+local TotalsText = {
+    meseta = "Meseta: %i",
+    scapes = "Scape Doll: %i",
+    pd = "Photon Drop: %i",
+    pc = "Photon Crystal: %i",
+    ps = "Photon Sphere: %i",
+    es = "S-Rank Count: %i",
+    espd = "S-Rank Specials: %iPD",
+    as = "AddSlot: %i",
+    hp = "HP Material: %i",
+    tp = "TP Material: %i",
+    pow = "Power Material: %i",
+    mind = "Mind Material: %i",
+    luck = "Luck Material: %i",
+    mg = "Monogrinder: %i",
+    dg = "Digrinder: %i",
+    tg = "Trigrinder: %i",
+}
+
+local TotalsOrdered = {
+    "meseta",
+    "scapes",
+    "pd",
+    "pc",
+    "ps",
+    "es",
+    "espd",
+    "as",
+    "hp",
+    "tp",
+    "pow",
+    "mind",
+    "luck",
+    "mg",
+    "dg",
+    "tg",
+}
 
 if optionsLoaded then
     -- If options loaded, make sure we have all those we need
@@ -52,16 +92,6 @@ else
     }
 end
 
--- read side message from memory buffer
-local function get_side_text()
-    local ptr = pso.read_u32(_SideMessage)
-    if ptr ~= 0 then
-        local text = pso.read_wstr(ptr + 0x14, 0xFF)
-        return text
-    end
-    return ""
-end
-
 local function SaveOptions(options)
     local file = io.open(optionsFileName, "w")
     if file ~= nil then
@@ -88,6 +118,27 @@ local function SaveOptions(options)
 
         io.close(file)
     end
+end
+
+-- read side message from memory buffer
+local function get_side_text()
+    local ptr = pso.read_u32(SideMessage)
+    if ptr ~= 0 then
+        local text = pso.read_wstr(ptr + 0x14, 0xFF)
+        return text
+    end
+    return ""
+end
+
+local function Characters()
+    local characters = {}
+    local charsLoaded, chars = pcall(require, "Backpack.data.chars")
+    if charsLoaded and chars ~= nil then
+        for key, value in pairs(chars) do
+            characters[key] = string.gsub(key, '~~~', ', ')
+        end
+    end
+    return characters
 end
 
 local function ProcessWeapon(item)
@@ -329,8 +380,8 @@ local function isAddSlot(item)
 end
 
 local function SaveChars(player)
-    local charsLoaded, chars = pcall(require, "Backpack.data.chars")
-    if charsLoaded and chars ~= nil then
+    local chars = Characters()
+    if table.getn(chars) then
         if chars[player] == nil then
             local file = io.open(charsFileName, "w")
             if file ~= nil then
@@ -338,7 +389,9 @@ local function SaveChars(player)
                 io.write("return\n")
                 io.write("{\n")
                 for key, value in pairs(chars) do
-                    io.write(string.format("    [\"%s\"] = %s,\n", tostring(key), tostring(value)))
+                    if key ~= player then
+                        io.write(string.format("    [\"%s\"] = %s,\n", tostring(key), tostring(true)))
+                    end
                 end
                 io.write(string.format("    [\"%s\"] = %s,\n", tostring(player), tostring(true)))
                 io.write("}\n")
@@ -464,6 +517,7 @@ local function writeTotals(player, counts)
 
     io.write("    },\n")
 end
+
 local function BuildAndSaveTotals(items, key)
     local _totals = DefaultTotals()
     _totals.meseta = items.meseta
@@ -513,7 +567,7 @@ local function SaveTotals(player, items, bank)
 
             io.write("return\n")
             io.write("{\n")
-            buildTotals(player, items, bank)
+            BuildTotals(player, items, bank)
             io.write("}\n")
 
             io.close(file)
@@ -550,45 +604,135 @@ local function SaveInvAndBank(player)
     package.loaded['Backpack.data.totals'] = nil
 end
 
-local TotalsText = {
-    meseta = "Meseta: %i",
-    scapes = "Scape Doll: %i",
-    pd = "Photon Drop: %i",
-    pc = "Photon Crystal: %i",
-    ps = "Photon Sphere: %i",
-    es = "S-Rank Count: %i",
-    espd = "S-Rank Specials: %iPD",
-    as = "AddSlot: %i",
-    hp = "HP Material: %i",
-    tp = "TP Material: %i",
-    pow = "Power Material: %i",
-    mind = "Mind Material: %i",
-    luck = "Luck Material: %i",
-    mg = "Monogrinder: %i",
-    dg = "Digrinder: %i",
-    tg = "Trigrinder: %i",
-}
+local function PresentTotals()
+    local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
+    local _totals = DefaultTotals()
+    if totalsLoaded and totals ~= nil then
+        for key, table in pairs(totals) do
+            _totals = AddTotals(_totals, table)
+        end
+    end
+    for k, v in ipairs(TotalsOrdered) do
+        if _totals[v] ~= nil then
+            imgui.Text(string.format(TotalsText[v], _totals[v]))
+        end
+    end
+end
 
-local TotalsOrdered = {
-    "meseta",
-    "scapes",
-    "pd",
-    "pc",
-    "ps",
-    "es",
-    "espd",
-    "as",
-    "hp",
-    "tp",
-    "pow",
-    "mind",
-    "luck",
-    "mg",
-    "dg",
-    "tg",
-}
+local function RemoveCharData(char)
+    local charFile = "Backpack.data." .. char
+    local chars = Characters()
+    if table.getn(chars) then
+        local file = io.open(charsFileName, "w")
+        if file ~= nil then
+            io.output(file)
+            io.write("return\n")
+            io.write("{\n")
+            for key, value in pairs(chars) do
+                if key ~= char then
+                    io.write(string.format("    [\"%s\"] = %s,\n", tostring(key), tostring(true)))
+                end
+            end
+            io.write("}\n")
+            io.close(file)
+        end
+    end
+    local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
+    if totalsLoaded and totals ~= nil then
+        local file = io.open(totalsFileName, "w")
+        if file ~= nil then
+            io.output(file)
+            io.write("return\n")
+            io.write("{\n")
+            for key, value in pairs(totals) do
+                if key ~= char and key ~= char .. '~Bank' then
+                    io.write(string.format("    [\"%s\"] = {\n", tostring(key)))
+                    for k, v in pairs(value) do
+                        io.write(string.format("        %s = %s,\n", k, v))
+                    end
+                    io.write("},\n")
+                end
+            end
+            io.write("}\n")
+            io.close(file)
+        end
+    end
+    os.remove(charFile .. "_inv")
+    os.remove(charFile .. "_bank")
+    package.loaded['Backpack.data.totals'] = nil
+    package.loaded['Backpack.data.chars'] = nil
+    BackpackSelected = 1
+end
 
-local function PresentBackpack()
+local function PresentCharacterOptions(char, player)
+    local charFile = "Backpack.data." .. char
+
+    if imgui.TreeNodeEx("Inventory") then
+        local itemsLoaded, items = pcall(require, charFile .. "_inv")
+        if itemsLoaded and items ~= nil then
+            for idx, item in pairs(items) do
+                imgui.Text(item)
+            end
+        end
+        imgui.TreePop()
+    end
+
+    if imgui.TreeNodeEx("Bank") then
+        local itemsLoaded, items = pcall(require, charFile .. "_bank")
+        if itemsLoaded and items ~= nil then
+            for idx, item in pairs(items) do
+                imgui.Text(item)
+            end
+        end
+        imgui.TreePop()
+    end
+    imgui.Text(" ")
+    if imgui.Button("Delete Char Data") then
+        RemoveCharData(char)
+    end
+end
+
+local function PresentSharedBank()
+    local sharedBankLoaded, sharedBank = pcall(require, "Backpack.data.shared_bank")
+    if sharedBankLoaded and sharedBank ~= nil then
+        for idx, item in pairs(sharedBank) do
+            imgui.Text(item)
+        end
+    end
+end
+
+local function BackpackOptions()
+    local options = { "Total Wealth", "Shared Bank" }
+    local chars = Characters()
+    if table.getn(chars) then
+        for idx, name in pairs(chars) do
+            table.insert(options, name)
+        end
+    end
+    return options
+end
+
+local function PresentBackpackOptions()
+    local options = BackpackOptions()
+    local selectionCount = table.getn(options)
+    if BackpackSelected > selectionCount then
+        BackpackSelected = 1
+    end
+    imgui.PushItemWidth(250)
+    BackpackStatus, BackpackSelected = imgui.Combo(" ", BackpackSelected, options, selectionCount)
+    imgui.PopItemWidth()
+    if BackpackSelected == 1 then
+        PresentTotals()
+    elseif BackpackSelected == 2 then
+        PresentSharedBank()
+    else
+        local name = options[BackpackSelected]
+        local char = string.gsub(name, ', ', '~~~')
+        PresentCharacterOptions(char, name)
+    end
+end
+
+local function Track()
     local player = lib_characters.GetSelf()
     local charLoaded, name = pcall(lib_characters.GetPlayerName, player)
 
@@ -614,53 +758,11 @@ local function PresentBackpack()
         end
         Frame = Frame + 1
     end
-    local totalsLoaded, totals = pcall(require, "Backpack.data.totals")
-    if totalsLoaded and totals ~= nil then
-        if imgui.TreeNodeEx("Total Wealth") then
-            local _totals = DefaultTotals()
-            for key, table in pairs(totals) do
-                _totals = AddTotals(_totals, table)
-            end
-            for k, v in ipairs(TotalsOrdered) do
-                if _totals[v] ~= nil then
-                    imgui.Text(string.format(TotalsText[v], _totals[v]))
-                end
-            end
-            imgui.TreePop()
-        end
-    end
-    local sharedBankLoaded, sharedBank = pcall(require, "Backpack.data.shared_bank")
-    if sharedBankLoaded and sharedBank ~= nil then
-        if imgui.TreeNodeEx("Shared Bank") then
-            for idx, item in pairs(sharedBank) do
-                imgui.Text(item)
-            end
-            imgui.TreePop()
-        end
-    end
-    local charsLoaded, chars = pcall(require, "Backpack.data.chars")
-    if charsLoaded and chars ~= nil then
-        for key, value in pairs(chars) do
-            if imgui.TreeNodeEx(string.gsub(key, '~~~', ', ') .. " - Inventory") then
-                local charInvLoaded, charInv = pcall(require, "Backpack.data." .. key .. '_inv')
-                if charInvLoaded and charInv ~= nil then
-                    for idx, item in pairs(charInv) do
-                        imgui.Text(item)
-                    end
-                end
-                imgui.TreePop()
-            end
-            if imgui.TreeNodeEx(string.gsub(key, '~~~', ', ') .. " - Bank") then
-                local charBankLoaded, charBank = pcall(require, "Backpack.data." .. key .. '_bank')
-                if charBankLoaded and charBank ~= nil then
-                    for idx, item in pairs(charBank) do
-                        imgui.Text(item)
-                    end
-                end
-                imgui.TreePop()
-            end
-        end
-    end
+end
+
+local function PresentBackpack()
+    Track()
+    PresentBackpackOptions()
 end
 
 
