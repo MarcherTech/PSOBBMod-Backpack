@@ -841,7 +841,7 @@ local function init()
     return
     {
         name = "Backpack",
-        version = "1.0.0",
+        version = "1.1.0.",
         author = "MarcherTech",
         description = "Shows Inventory and Bank across characters",
         present = present,
