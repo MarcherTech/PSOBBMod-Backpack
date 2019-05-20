@@ -687,7 +687,7 @@ local function PresentCharacterOptions(char, player)
         imgui.TreePop()
     end
     imgui.Text(" ")
-    if imgui.Button("Delete Char Data") then
+    if imgui.Button("Remove Character Data") then
         RemoveCharData(char)
     end
 end
